@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/KeyboardLockComponent/KeyboardLockComponent.csproj" />
+  <Project Path="src/KeyboardCooldownLock.App/KeyboardCooldownLock.App.csproj" />
+</Solution>

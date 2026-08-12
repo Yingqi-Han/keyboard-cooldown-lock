@@ -46,9 +46,9 @@
 ## 构建要求
 
 - Windows PowerShell 5.1+
-- .NET Framework 4.x 中的 C# 编译器
+- .NET 10 SDK（仓库用 `global.json` 固定为 10.0.101）
 
-`build.ps1` 会自动寻找 64 位或 32 位 .NET Framework 编译器，并在 `build/` 中生成单文件 WinForms EXE。
+`build.ps1` 使用锁定的 NuGet 依赖，在 `build/` 中生成 `win-x64`、self-contained 的单文件 WPF EXE。可通过 `YINGQI_DOTNET` 指定 SDK 位置。
 
 ## 隐私
 
@@ -58,11 +58,17 @@
 
 构建会同时生成独立 `KeyboardCoolDownLock.exe` 和可嵌入 Yingqi Tools 的 `KeyboardLockComponent.dll`：
 
-- `KeyboardLockControl`：可嵌入 WinForms 容器的设置面板。
+- `KeyboardLockControl`：可嵌入 WPF 容器的 Fluent 设置面板。
 - `KeyboardLockSession.TryStart(TimeSpan)`：启动带鼠标恢复界面的锁定会话。
 - `KeyboardLockSession.Stop()`：释放钩子并停止会话。
 
 独立 EXE 和嵌入组件使用相同的跨进程单实例锁，不会叠加多个键盘钩子。
+
+## v2 界面
+
+- `.NET 10 WPF` + `WPF UI 4.3.0`。
+- 锁定窗口采用原生 Fluent 控件、倒计时、线性进度与“延长 5 分钟”。
+- 支持系统浅色/深色资源，不使用驱动或后台服务。
 
 ## 参考实现与取舍
 

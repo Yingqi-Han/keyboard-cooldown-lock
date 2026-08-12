@@ -1,41 +1,26 @@
-param()
-
+param([switch]$LockedMode)
 $ErrorActionPreference = 'Stop'
-$projectRoot = $PSScriptRoot
-$sourceDir = Join-Path $projectRoot 'src'
-$buildDir = Join-Path $projectRoot 'build'
-
-$compilerCandidates = @(
-    (Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'),
-    (Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe')
-)
-$compiler = $compilerCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-if (-not $compiler) {
-    throw 'The .NET Framework C# compiler (csc.exe) was not found.'
-}
-
-New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
-
-$iconBuilder = Join-Path $buildDir 'IconBuilder.exe'
-$iconPath = Join-Path $buildDir 'KeyboardCoolDownLock.ico'
-$appPath = Join-Path $buildDir 'KeyboardCoolDownLock.exe'
-$componentPath = Join-Path $buildDir 'KeyboardLockComponent.dll'
-
-& $compiler /nologo /target:exe /optimize+ "/out:$iconBuilder" /reference:System.Drawing.dll (Join-Path $sourceDir 'IconBuilder.cs')
-if ($LASTEXITCODE -ne 0) { throw 'IconBuilder compilation failed.' }
-
-& $iconBuilder $iconPath
-if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed.' }
-
-& $compiler /nologo /target:library /platform:anycpu /optimize+ "/out:$componentPath" /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll (Join-Path $sourceDir 'KeyboardLockComponent.cs')
-if ($LASTEXITCODE -ne 0) { throw 'Component compilation failed.' }
-
-& $compiler /nologo /target:winexe /platform:anycpu /optimize+ "/win32icon:$iconPath" "/win32manifest:$(Join-Path $sourceDir 'app.manifest')" "/out:$appPath" /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll "/reference:$componentPath" (Join-Path $sourceDir 'Program.cs')
-if ($LASTEXITCODE -ne 0) { throw 'Application compilation failed.' }
-
-$testProcess = Start-Process -FilePath $appPath -ArgumentList '--self-test' -PassThru -Wait
-if ($testProcess.ExitCode -ne 0) {
-    throw "Self-test failed with exit code $($testProcess.ExitCode)."
-}
-
-Get-Item -LiteralPath $appPath | Select-Object FullName, Length, LastWriteTime
+$root = $PSScriptRoot
+$dotnet = $env:YINGQI_DOTNET
+if (-not $dotnet) { $dotnet = (Get-Command dotnet -ErrorAction Stop).Source }
+if (-not (Test-Path -LiteralPath $dotnet)) { throw 'Set YINGQI_DOTNET to a valid .NET 10 SDK dotnet.exe.' }
+$env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+$env:DOTNET_NOLOGO = '1'
+$build = [System.IO.Path]::GetFullPath((Join-Path $root 'build'))
+$rootPrefix = [System.IO.Path]::GetFullPath($root).TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+if (-not $build.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe build path: $build" }
+$solution = Join-Path $root 'KeyboardCooldownLock.slnx'
+New-Item -ItemType Directory -Force -Path $build | Out-Null
+Get-ChildItem -LiteralPath $build -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+$restoreArgs = @('restore', $solution)
+if ($LockedMode) { $restoreArgs += '--locked-mode' }
+& $dotnet @restoreArgs
+if ($LASTEXITCODE -ne 0) { throw 'Restore failed.' }
+& $dotnet build $solution -c Release --no-restore
+if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
+& $dotnet publish (Join-Path $root 'src\KeyboardCooldownLock.App\KeyboardCooldownLock.App.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false --no-restore -o $build
+if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
+Get-ChildItem -LiteralPath $build -Filter '*.pdb' -File -ErrorAction SilentlyContinue | Remove-Item -Force
+$test = Start-Process (Join-Path $build 'KeyboardCoolDownLock.exe') -ArgumentList '--self-test' -PassThru -Wait
+if ($test.ExitCode -ne 0) { throw "Self-test failed: $($test.ExitCode)" }
+Get-ChildItem $build | Select-Object Name, Length, LastWriteTime
