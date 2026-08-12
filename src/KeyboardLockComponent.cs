@@ -348,12 +348,12 @@ namespace KeyboardCoolDownLock
                 SetStatus(started ? "键盘已锁定，鼠标仍可正常使用。" : "键盘锁已经在运行。", started);
             };
             _status.SetBounds(248, 210, 430, 48);
-            _status.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
             _status.TextAlign = ContentAlignment.MiddleLeft;
             _status.Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold);
             _status.ForeColor = KeyboardTheme.Muted;
             _status.Text = "当前未锁定";
             _setupCard.Controls.AddRange(new Control[] { question, helper, _choices, custom, _minutes, unit, _start, _status });
+            _setupCard.Resize += delegate { _status.Width = Math.Max(120, _setupCard.ClientSize.Width - 276); };
 
             Panel gap = new Panel { Dock = DockStyle.Top, Height = 18, BackColor = KeyboardTheme.Canvas };
             _safetyCard.Dock = DockStyle.Top;
@@ -364,8 +364,8 @@ namespace KeyboardCoolDownLock
             safetyMark.TextAlign = ContentAlignment.MiddleCenter;
             Label safetyTitle = MakeLabel("始终留有安全退路", 80, 23, 300, 28, 11F, FontStyle.Bold, KeyboardTheme.Text);
             Label safetyText = MakeLabel("锁定窗口会保持可见，鼠标可点击“立即解锁”；超时也会自动恢复。Ctrl+Alt+Delete 不会被拦截。", 80, 52, 610, 44, 9F, FontStyle.Regular, KeyboardTheme.Muted);
-            safetyText.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
             _safetyCard.Controls.AddRange(new Control[] { safetyMark, safetyTitle, safetyText });
+            _safetyCard.Resize += delegate { safetyText.Width = Math.Max(200, _safetyCard.ClientSize.Width - 104); };
 
             Controls.Add(_safetyCard);
             Controls.Add(gap);
