@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
@@ -179,23 +180,232 @@ namespace KeyboardCoolDownLock
         }
     }
 
+    internal static class KeyboardTheme
+    {
+        public static readonly Color Canvas = Color.FromArgb(245, 247, 251);
+        public static readonly Color Card = Color.White;
+        public static readonly Color Text = Color.FromArgb(20, 30, 47);
+        public static readonly Color Muted = Color.FromArgb(103, 117, 139);
+        public static readonly Color Border = Color.FromArgb(224, 229, 238);
+        public static readonly Color Primary = Color.FromArgb(39, 174, 96);
+        public static readonly Color PrimaryDark = Color.FromArgb(31, 148, 81);
+        public static readonly Color Blue = Color.FromArgb(61, 123, 253);
+
+        public static GraphicsPath RoundedRectangle(Rectangle bounds, int radius)
+        {
+            int diameter = radius * 2;
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+    }
+
+    internal sealed class KeyboardCard : Panel
+    {
+        private Color _fillColor = KeyboardTheme.Card;
+        private Color _borderColor = KeyboardTheme.Border;
+        public Color FillColor { get { return _fillColor; } set { _fillColor = value; Invalidate(); } }
+        public Color BorderColor { get { return _borderColor; } set { _borderColor = value; Invalidate(); } }
+
+        public KeyboardCard()
+        {
+            BackColor = KeyboardTheme.Canvas;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            Rectangle bounds = new Rectangle(1, 1, Width - 3, Height - 3);
+            using (GraphicsPath path = KeyboardTheme.RoundedRectangle(bounds, 16))
+            using (Brush fill = new SolidBrush(_fillColor))
+            using (Pen border = new Pen(_borderColor))
+            {
+                e.Graphics.FillPath(fill, path);
+                e.Graphics.DrawPath(border, path);
+            }
+        }
+    }
+
+    internal class KeyboardRoundedButton : Button
+    {
+        private Color _normalColor = KeyboardTheme.Primary;
+        private Color _hoverColor = KeyboardTheme.PrimaryDark;
+        private bool _hovered;
+        public Color NormalColor { get { return _normalColor; } set { _normalColor = value; Invalidate(); } }
+        public Color HoverColor { get { return _hoverColor; } set { _hoverColor = value; Invalidate(); } }
+
+        public KeyboardRoundedButton()
+        {
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            ForeColor = Color.White;
+            Cursor = Cursors.Hand;
+            UseVisualStyleBackColor = false;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
+        }
+        protected override void OnMouseEnter(EventArgs e) { _hovered = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { _hovered = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            Rectangle bounds = new Rectangle(0, 0, Width - 1, Height - 1);
+            Color color = Enabled ? (_hovered ? _hoverColor : _normalColor) : Color.FromArgb(187, 197, 211);
+            using (GraphicsPath path = KeyboardTheme.RoundedRectangle(bounds, 11))
+            using (Brush brush = new SolidBrush(color)) e.Graphics.FillPath(brush, path);
+            TextRenderer.DrawText(e.Graphics, Text, Font, bounds, ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
+    }
+
+    internal sealed class DurationButton : KeyboardRoundedButton
+    {
+        private bool _selected;
+        public bool Selected { get { return _selected; } set { _selected = value; Invalidate(); } }
+        public DurationButton()
+        {
+            ForeColor = KeyboardTheme.Text;
+            NormalColor = Color.White;
+            HoverColor = Color.FromArgb(242, 246, 255);
+            Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold);
+        }
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            Rectangle bounds = new Rectangle(1, 1, Width - 3, Height - 3);
+            Color fillColor = Selected ? Color.FromArgb(237, 244, 255) : Color.White;
+            Color lineColor = Selected ? KeyboardTheme.Blue : KeyboardTheme.Border;
+            using (GraphicsPath path = KeyboardTheme.RoundedRectangle(bounds, 10))
+            using (Brush fill = new SolidBrush(fillColor))
+            using (Pen line = new Pen(lineColor, Selected ? 1.5F : 1F))
+            {
+                e.Graphics.FillPath(fill, path);
+                e.Graphics.DrawPath(line, path);
+            }
+            Color textColor = Selected ? Color.FromArgb(40, 95, 205) : KeyboardTheme.Text;
+            TextRenderer.DrawText(e.Graphics, Text, Font, bounds, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
+    }
+
     public sealed class KeyboardLockControl : UserControl
     {
         private readonly NumericUpDown _minutes = new NumericUpDown();
         private readonly Label _status = new Label();
+        private readonly FlowLayoutPanel _choices = new FlowLayoutPanel();
+        private readonly KeyboardCard _setupCard = new KeyboardCard();
+        private readonly KeyboardCard _safetyCard = new KeyboardCard();
+        private readonly KeyboardRoundedButton _start = new KeyboardRoundedButton();
 
         public KeyboardLockControl()
         {
-            Dock = DockStyle.Fill; BackColor = Color.White; Font = new Font("Microsoft YaHei UI", 10F);
-            Label title = new Label { Text = "\u952e\u76d8\u9501", Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold), AutoSize = true, Location = new Point(28, 24) };
-            Label description = new Label { Text = "\u4e34\u65f6\u9501\u5b9a\u952e\u76d8\uff0c\u9f20\u6807\u4ecd可\u7528\uff0c\u9002\u5408\u964d\u6e29\u6216\u6e05\u6d01\u952e\u76d8\u3002", AutoSize = true, Location = new Point(31, 72), ForeColor = Color.DimGray };
-            Label duration = new Label { Text = "\u81ea\u52a8\u89e3\u9501\u65f6\u95f4\uff08\u5206\u949f\uff09", AutoSize = true, Location = new Point(31, 125) };
-            _minutes.Minimum = 1; _minutes.Maximum = 120; _minutes.Value = 15; _minutes.SetBounds(220, 120, 90, 30);
-            Button start = new Button { Text = "\u5f00\u59cb\u9501\u5b9a", BackColor = Color.FromArgb(22, 163, 74), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold) };
-            start.SetBounds(31, 180, 210, 48); start.Click += delegate { _status.Text = KeyboardLockSession.TryStart(TimeSpan.FromMinutes((double)_minutes.Value)) ? "\u952e\u76d8\u5df2\u9501\u5b9a\u3002" : "\u952e\u76d8\u9501\u5df2\u5728\u8fd0\u884c\u3002"; };
-            _status.SetBounds(31, 245, 450, 30); _status.ForeColor = Color.FromArgb(37, 99, 235);
-            KeyboardLockSession.SessionEnded += delegate { if (!IsDisposed && IsHandleCreated) BeginInvoke(new Action(delegate { _status.Text = "\u952e\u76d8\u5df2\u6062\u590d\u3002"; })); };
-            Controls.AddRange(new Control[] { title, description, duration, _minutes, start, _status });
+            Dock = DockStyle.Fill;
+            BackColor = KeyboardTheme.Canvas;
+            Font = new Font("Microsoft YaHei UI", 10F);
+            AutoScroll = true;
+
+            Panel header = new Panel { Dock = DockStyle.Top, Height = 102, BackColor = KeyboardTheme.Canvas };
+            Label eyebrow = MakeLabel("KEYBOARD COOLDOWN", 0, 0, 320, 20, 8.5F, FontStyle.Bold, KeyboardTheme.Blue);
+            Label title = MakeLabel("键盘锁", 0, 24, 500, 42, 25F, FontStyle.Bold, KeyboardTheme.Text);
+            Label description = MakeLabel("临时停用键盘，让鼠标保持可用。适合给电脑散热或清洁键盘。", 1, 70, 650, 26, 10F, FontStyle.Regular, KeyboardTheme.Muted);
+            header.Controls.AddRange(new Control[] { eyebrow, title, description });
+
+            _setupCard.Dock = DockStyle.Top;
+            _setupCard.Height = 275;
+            Label question = MakeLabel("锁定多长时间？", 28, 24, 300, 30, 14F, FontStyle.Bold, KeyboardTheme.Text);
+            Label helper = MakeLabel("到时会自动恢复，也可以随时用鼠标手动解锁。", 28, 55, 500, 24, 9F, FontStyle.Regular, KeyboardTheme.Muted);
+            _choices.SetBounds(23, 91, 480, 50);
+            _choices.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
+            _choices.BackColor = Color.White;
+            _choices.WrapContents = false;
+            _choices.AutoSize = false;
+            AddDurationChoice("5 分钟", 5);
+            AddDurationChoice("15 分钟", 15);
+            AddDurationChoice("30 分钟", 30);
+            AddDurationChoice("60 分钟", 60);
+
+            Label custom = MakeLabel("自定义", 28, 157, 66, 34, 9F, FontStyle.Bold, KeyboardTheme.Muted);
+            _minutes.Minimum = 1;
+            _minutes.Maximum = 120;
+            _minutes.Value = 15;
+            _minutes.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            _minutes.TextAlign = HorizontalAlignment.Center;
+            _minutes.BorderStyle = BorderStyle.FixedSingle;
+            _minutes.SetBounds(96, 153, 86, 36);
+            Label unit = MakeLabel("分钟", 190, 157, 52, 34, 9F, FontStyle.Regular, KeyboardTheme.Muted);
+            _minutes.ValueChanged += delegate { UpdateChoiceSelection(); };
+
+            _start.Text = "开始锁定";
+            _start.AccessibleName = "开始锁定键盘";
+            _start.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
+            _start.SetBounds(28, 210, 200, 48);
+            _start.Click += delegate
+            {
+                bool started = KeyboardLockSession.TryStart(TimeSpan.FromMinutes((double)_minutes.Value));
+                SetStatus(started ? "键盘已锁定，鼠标仍可正常使用。" : "键盘锁已经在运行。", started);
+            };
+            _status.SetBounds(248, 210, 430, 48);
+            _status.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
+            _status.TextAlign = ContentAlignment.MiddleLeft;
+            _status.Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold);
+            _status.ForeColor = KeyboardTheme.Muted;
+            _status.Text = "当前未锁定";
+            _setupCard.Controls.AddRange(new Control[] { question, helper, _choices, custom, _minutes, unit, _start, _status });
+
+            Panel gap = new Panel { Dock = DockStyle.Top, Height = 18, BackColor = KeyboardTheme.Canvas };
+            _safetyCard.Dock = DockStyle.Top;
+            _safetyCard.Height = 116;
+            _safetyCard.FillColor = Color.FromArgb(240, 246, 255);
+            _safetyCard.BorderColor = Color.FromArgb(211, 225, 249);
+            Label safetyMark = MakeLabel("✓", 26, 26, 42, 42, 17F, FontStyle.Bold, Color.FromArgb(43, 111, 225));
+            safetyMark.TextAlign = ContentAlignment.MiddleCenter;
+            Label safetyTitle = MakeLabel("始终留有安全退路", 80, 23, 300, 28, 11F, FontStyle.Bold, KeyboardTheme.Text);
+            Label safetyText = MakeLabel("锁定窗口会保持可见，鼠标可点击“立即解锁”；超时也会自动恢复。Ctrl+Alt+Delete 不会被拦截。", 80, 52, 610, 44, 9F, FontStyle.Regular, KeyboardTheme.Muted);
+            safetyText.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
+            _safetyCard.Controls.AddRange(new Control[] { safetyMark, safetyTitle, safetyText });
+
+            Controls.Add(_safetyCard);
+            Controls.Add(gap);
+            Controls.Add(_setupCard);
+            Controls.Add(header);
+            KeyboardLockSession.SessionEnded += delegate { if (!IsDisposed && IsHandleCreated) BeginInvoke(new Action(delegate { SetStatus("键盘已恢复，可以正常输入。", false); })); };
+            UpdateChoiceSelection();
+        }
+
+        private void AddDurationChoice(string text, decimal minutes)
+        {
+            DurationButton button = new DurationButton();
+            button.Text = text;
+            button.Tag = minutes;
+            button.Size = new Size(100, 42);
+            button.Margin = new Padding(5, 3, 5, 3);
+            button.Click += delegate { _minutes.Value = (decimal)button.Tag; };
+            _choices.Controls.Add(button);
+        }
+
+        private void UpdateChoiceSelection()
+        {
+            foreach (Control control in _choices.Controls)
+            {
+                DurationButton button = control as DurationButton;
+                if (button != null) button.Selected = (decimal)button.Tag == _minutes.Value;
+            }
+        }
+
+        private void SetStatus(string text, bool active)
+        {
+            _status.Text = text;
+            _status.ForeColor = active ? Color.FromArgb(25, 135, 78) : KeyboardTheme.Muted;
+        }
+
+        private static Label MakeLabel(string text, int x, int y, int w, int h, float size, FontStyle style, Color color)
+        {
+            Label label = new Label { Text = text, Font = new Font("Microsoft YaHei UI", size, style), ForeColor = color, BackColor = Color.Transparent, TextAlign = ContentAlignment.MiddleLeft };
+            label.SetBounds(x, y, w, h);
+            return label;
         }
     }
 }
