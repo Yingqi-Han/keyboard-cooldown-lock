@@ -19,6 +19,7 @@ New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 $iconBuilder = Join-Path $buildDir 'IconBuilder.exe'
 $iconPath = Join-Path $buildDir 'KeyboardCoolDownLock.ico'
 $appPath = Join-Path $buildDir 'KeyboardCoolDownLock.exe'
+$componentPath = Join-Path $buildDir 'KeyboardLockComponent.dll'
 
 & $compiler /nologo /target:exe /optimize+ "/out:$iconBuilder" /reference:System.Drawing.dll (Join-Path $sourceDir 'IconBuilder.cs')
 if ($LASTEXITCODE -ne 0) { throw 'IconBuilder compilation failed.' }
@@ -26,7 +27,10 @@ if ($LASTEXITCODE -ne 0) { throw 'IconBuilder compilation failed.' }
 & $iconBuilder $iconPath
 if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed.' }
 
-& $compiler /nologo /target:winexe /platform:anycpu /optimize+ "/win32icon:$iconPath" "/win32manifest:$(Join-Path $sourceDir 'app.manifest')" "/out:$appPath" /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll (Join-Path $sourceDir 'KeyboardCoolDownLock.cs')
+& $compiler /nologo /target:library /platform:anycpu /optimize+ "/out:$componentPath" /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll (Join-Path $sourceDir 'KeyboardLockComponent.cs')
+if ($LASTEXITCODE -ne 0) { throw 'Component compilation failed.' }
+
+& $compiler /nologo /target:winexe /platform:anycpu /optimize+ "/win32icon:$iconPath" "/win32manifest:$(Join-Path $sourceDir 'app.manifest')" "/out:$appPath" /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll "/reference:$componentPath" (Join-Path $sourceDir 'Program.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Application compilation failed.' }
 
 $testProcess = Start-Process -FilePath $appPath -ArgumentList '--self-test' -PassThru -Wait

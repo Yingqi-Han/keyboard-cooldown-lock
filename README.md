@@ -54,6 +54,16 @@
 
 工具不记录按键、不读取按键内容、不联网，也不收集遥测数据。钩子回调只返回非零值以阻止事件继续传递。
 
+## Component API
+
+构建会同时生成独立 `KeyboardCoolDownLock.exe` 和可嵌入 Yingqi Tools 的 `KeyboardLockComponent.dll`：
+
+- `KeyboardLockControl`：可嵌入 WinForms 容器的设置面板。
+- `KeyboardLockSession.TryStart(TimeSpan)`：启动带鼠标恢复界面的锁定会话。
+- `KeyboardLockSession.Stop()`：释放钩子并停止会话。
+
+独立 EXE 和嵌入组件使用相同的跨进程单实例锁，不会叠加多个键盘钩子。
+
 ## 参考实现与取舍
 
 - [`jonneyj/Keyboard-Locker`](https://github.com/jonneyj/Keyboard-Locker)：可移植 EXE 和鼠标恢复思路。
