@@ -334,8 +334,8 @@ namespace KeyboardCoolDownLock
             _minutes.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
             _minutes.TextAlign = HorizontalAlignment.Center;
             _minutes.BorderStyle = BorderStyle.FixedSingle;
-            _minutes.SetBounds(96, 153, 86, 36);
-            Label unit = MakeLabel("分钟", 190, 157, 52, 34, 9F, FontStyle.Regular, KeyboardTheme.Muted);
+            _minutes.SetBounds(96, 153, 102, 36);
+            Label unit = MakeLabel("分钟", 206, 157, 52, 34, 9F, FontStyle.Regular, KeyboardTheme.Muted);
             _minutes.ValueChanged += delegate { UpdateChoiceSelection(); };
 
             _start.Text = "开始锁定";
