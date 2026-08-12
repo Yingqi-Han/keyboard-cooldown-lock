@@ -1,0 +1,20 @@
+# Build outputs
+build/
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.ico
+
+# Local installation and test artifacts
+*.lnk
+*.log
+*.tmp
+
+# Editors and operating systems
+.vs/
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
