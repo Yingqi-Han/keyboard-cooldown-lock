@@ -24,7 +24,6 @@ public partial class LockWindow : FluentWindow
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        NativeKeyboardHook.Install();
         UpdateDisplay();
         _timer.Start();
         Activate();
@@ -51,7 +50,6 @@ public partial class LockWindow : FluentWindow
     {
         Release();
         Close();
-        Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
     }
 
     private void UpdateDisplay()
@@ -69,6 +67,5 @@ public partial class LockWindow : FluentWindow
         if (_released) return;
         _released = true;
         _timer.Stop();
-        NativeKeyboardHook.Uninstall();
     }
 }

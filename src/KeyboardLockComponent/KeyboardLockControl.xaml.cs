@@ -9,7 +9,11 @@ public partial class KeyboardLockControl : UserControl
     public KeyboardLockControl()
     {
         InitializeComponent();
-        KeyboardLockSession.SessionEnded += OnSessionEnded;
+        Loaded += (_, _) =>
+        {
+            KeyboardLockSession.SessionEnded -= OnSessionEnded;
+            KeyboardLockSession.SessionEnded += OnSessionEnded;
+        };
         Unloaded += (_, _) => KeyboardLockSession.SessionEnded -= OnSessionEnded;
     }
 
@@ -24,8 +28,10 @@ public partial class KeyboardLockControl : UserControl
         double minutes = double.IsNaN(rawMinutes) ? 15 : Math.Clamp(rawMinutes, 1, 120);
         bool started = KeyboardLockSession.TryStart(TimeSpan.FromMinutes(minutes));
         StatusBar.Severity = started ? InfoBarSeverity.Success : InfoBarSeverity.Warning;
-        StatusBar.Title = started ? "键盘已锁定" : "键盘锁已在运行";
-        StatusBar.Message = started ? "鼠标仍可正常使用。" : "请使用现有锁定窗口。";
+        StatusBar.Title = started ? "键盘已锁定" : "锁定未启动";
+        StatusBar.Message = started
+            ? "锁定窗口已显示，鼠标仍可正常使用。"
+            : KeyboardLockSession.LastError?.Message ?? "已有锁定会话正在运行，请使用现有锁定窗口。";
     }
 
     private void OnSessionEnded(object? sender, EventArgs e)
