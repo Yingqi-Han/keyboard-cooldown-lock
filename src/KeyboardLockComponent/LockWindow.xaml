@@ -34,7 +34,7 @@
       <Grid Grid.Row="5" Margin="0,28,0,0">
         <Grid.ColumnDefinitions><ColumnDefinition Width="170"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Button Grid.Column="0" Height="52" Content="延长 5 分钟" Click="Extend_Click" />
-        <ui:Button Grid.Column="2" Height="52" Appearance="Primary" Content="立即解锁键盘" FontSize="16" FontWeight="SemiBold" Click="Unlock_Click" AutomationProperties.Name="立即解锁键盘" />
+        <ui:Button x:Name="UnlockButton" Grid.Column="2" Height="52" Appearance="Primary" Content="立即解锁键盘" FontSize="16" FontWeight="SemiBold" Click="Unlock_Click" AutomationProperties.Name="立即解锁键盘" />
       </Grid>
       <TextBlock Grid.Row="4" Margin="0,20,0,0" VerticalAlignment="Bottom" HorizontalAlignment="Center" Text="安全兜底：Ctrl+Alt+Delete 不会被本工具拦截" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
     </Grid>

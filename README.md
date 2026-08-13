@@ -50,6 +50,12 @@
 
 `build.ps1` 使用锁定的 NuGet 依赖，在 `build/` 中生成 `win-x64`、self-contained 的单文件 WPF EXE。可通过 `YINGQI_DOTNET` 指定 SDK 位置。
 
+构建链会先运行 `KeyboardLockComponent.Tests`，再执行独立 EXE 冒烟测试：真实注入按键的 Hook 自检、可见恢复窗口、自动超时、跨进程单实例，以及测试进程被强制终止后的 Hook 释放。也可单独运行：
+
+```powershell
+dotnet test .\tests\KeyboardLockComponent.Tests\KeyboardLockComponent.Tests.csproj -c Release
+```
+
 ## 隐私
 
 工具不记录按键、不读取按键内容、不联网，也不收集遥测数据。钩子回调只返回非零值以阻止事件继续传递。
